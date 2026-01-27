@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(npm install)",
       "Bash(pip install:*)",
-      "Bash(npx vite build:*)"
+      "Bash(npx vite build:*)",
+      "Bash(grep:*)"
     ]
   }
 }

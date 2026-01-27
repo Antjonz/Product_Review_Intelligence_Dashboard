@@ -1,94 +1,161 @@
-"""Extract meaningful key insights (praises and complaints) from reviews."""
-import re
+"""Extract meaningful key insights using TF-IDF on bigrams/trigrams."""
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
 
-# Phrases that indicate specific praise or complaint topics.
-# We match these against lowercased review text.
-PRAISE_PATTERNS = [
-    (r"\b(?:great|excellent|good|amazing|fantastic|superb|outstanding) (?:quality|build quality)\b", "great quality"),
-    (r"\b(?:great|excellent|good|amazing|best|fantastic) value\b", "great value for money"),
-    (r"\bworth (?:every|the) (?:penny|money|price)\b", "worth the price"),
-    (r"\beasy to (?:set up|setup|use|install|assemble)\b", "easy to set up and use"),
-    (r"\b(?:battery|charge) (?:lasts?|life is) (?:all day|incredible|amazing|great|long|forever)\b", "excellent battery life"),
-    (r"\bbattery life is (?:incredible|amazing|great|excellent|fantastic)\b", "excellent battery life"),
-    (r"\b(?:sound|audio) (?:quality )?is (?:amazing|great|excellent|fantastic|superb|awesome|clear|crisp)\b", "great sound quality"),
-    (r"\bcrystal clear (?:audio|sound)\b", "great sound quality"),
-    (r"\b(?:very |super )?(?:comfortable|comfy) to (?:wear|use)\b", "comfortable to wear"),
-    (r"\b(?:perfect|great|nice|good) fit\b", "comfortable fit"),
-    (r"\b(?:looks? (?:great|amazing|sleek|premium|beautiful)|sleek design|beautiful design)\b", "sleek design"),
-    (r"\b(?:fast|quick) shipping\b", "fast shipping"),
-    (r"\barrived (?:in )?perfect (?:condition)?\b", "arrived in perfect condition"),
-    (r"\b(?:customer )?(?:support|service) was (?:extremely |very )?helpful\b", "helpful customer support"),
-    (r"\b(?:highly|would|definitely) recommend\b", "highly recommended"),
-    (r"\bexceeded (?:my |all )?expectations\b", "exceeded expectations"),
-    (r"\b(?:very |super )?(?:durable|well[- ]made|solid|sturdy)\b", "durable and well-made"),
-    (r"\b(?:lightweight|light weight|very light)\b", "lightweight and portable"),
-    (r"\bnoise cancell?ation is (?:phenomenal|great|amazing|excellent)\b", "great noise cancellation"),
-    (r"\buser[- ]friendly\b", "user-friendly"),
-    (r"\b(?:works? (?:perfectly|great|seamlessly|flawlessly))\b", "works perfectly"),
-    (r"\b(?:love|loved) (?:this|the|it)\b", "customers love it"),
-    (r"\bbest purchase\b", "considered a great purchase"),
-    (r"\b(?:compact|small) size\b", "compact size"),
-]
 
-COMPLAINT_PATTERNS = [
-    (r"\b(?:broke|broken|stopped working) (?:after|within|in)\b", "breaks easily"),
-    (r"\b(?:cheap|flimsy|fragile|poor)(?:ly made| quality| build| material)?\b", "feels cheap and flimsy"),
-    (r"\b(?:battery (?:barely|only|doesn.t) (?:lasts?|lasted?))\b", "poor battery life"),
-    (r"\bbattery (?:life )?(?:is )?(?:terrible|awful|bad|short|poor)\b", "poor battery life"),
-    (r"\bwaste of money\b", "waste of money"),
-    (r"\b(?:not worth|overpriced|too expensive|total rip\s?off)\b", "overpriced"),
-    (r"\b(?:customer )?(?:support|service) was (?:unhelpful|rude|terrible|awful|horrible|useless|unresponsive)\b", "poor customer service"),
-    (r"\bno response from (?:warranty|support|customer)\b", "poor customer service"),
-    (r"\b(?:sound|audio) (?:quality )?is (?:awful|terrible|bad|poor|tinny|distorted)\b", "poor sound quality"),
-    (r"\btinny and distorted\b", "poor sound quality"),
-    (r"\b(?:does not|doesn.t|did not|didn.t) work as (?:advertised|described|expected)\b", "does not work as advertised"),
-    (r"\b(?:arrived damaged|came broken|received damaged)\b", "arrived damaged"),
-    (r"\breturn (?:process|policy) was (?:a nightmare|terrible|difficult|horrible)\b", "difficult return process"),
-    (r"\b(?:software|app) is (?:buggy|glitchy|crashes?|terrible)\b", "buggy software"),
-    (r"\bcrashe?s? (?:constantly|frequently|often|a lot)\b", "crashes frequently"),
-    (r"\b(?:very |super |extremely )?(?:uncomfortable|gives? me headaches?)\b", "uncomfortable to use"),
-    (r"\b(?:screen|display) is (?:dim|dark|dull|terrible|bad)\b", "poor display quality"),
-    (r"\bcolors? look (?:washed out|faded|bad|dull)\b", "poor display quality"),
-    (r"\b(?:does not|doesn.t) fit\b", "poor fit"),
-    (r"\b(?:extremely |very )?slow (?:performance)?\b", "slow performance"),
-    (r"\b(?:freezes?|lags?|lagging) (?:during|constantly|a lot)\b", "slow performance"),
-    (r"\b(?:over ?heated?|over ?heating|(?:made|makes) a lot of noise|too noisy|very loud)\b", "overheating or noisy"),
-    (r"\bworst (?:purchase|product|buy)\b", "worst purchase"),
-    (r"\b(?:never|don.t|do not) buy(?:ing)?\b", "customers warn against buying"),
-]
+# Generic phrases to filter out — these score high in TF-IDF but aren't useful insights
+STOP_PHRASES = {
+    "the product", "this product", "this item", "the item",
+    "bought this", "buy this", "bought it", "got this",
+    "would recommend", "don recommend", "ve been", "ve had",
+    "ve ever", "it was", "it is", "this is", "that is",
+    "in my", "on the", "of the", "for the", "to the",
+    "and the", "and it", "but the", "but it", "with the",
+    "my opinion", "think this", "opinion this",
+    "overall this", "honestly this", "in opinion",
+    "time will", "will tell", "we ll", "ll see",
+    "would buy", "buy again", "not sure",
+    "average product", "average product good", "decent price",
+    "good features", "good features great", "product good features",
+    "product good", "not amazing", "not terrible",
+    "gets job done", "nothing special", "pay get",
+    "features great", "great not", "not great", "product feels",
+    "30 minutes", "minutes", "ve year", "purchase ve",
+    "ve made", "ve bought", "ve seen", "ve used",
+}
+
+# Words that are too generic on their own to form a useful phrase
+FILLER_WORDS = {
+    "honestly", "overall", "opinion", "think", "really", "pretty",
+    "quite", "just", "also", "got", "lot", "bit", "way",
+}
 
 
-def _count_pattern_matches(texts: list[str], patterns: list[tuple[str, str]]) -> list[dict]:
-    """Count how many reviews match each pattern."""
-    lower_texts = [t.lower() for t in texts]
-    counts = Counter()
-    for text in lower_texts:
-        seen_labels = set()
-        for pattern, label in patterns:
-            if label not in seen_labels and re.search(pattern, text):
-                counts[label] += 1
-                seen_labels.add(label)
-    return counts
+def _extract_distinctive_phrases(
+    target_texts: list[str],
+    contrast_texts: list[str],
+    n: int = 8,
+) -> list[dict]:
+    """
+    Extract phrases distinctive to target_texts vs contrast_texts.
+
+    Uses TF-IDF on bigrams/trigrams. Scores each phrase by how much more
+    important it is in the target group compared to the contrast group.
+    """
+    if len(target_texts) < 5:
+        return []
+
+    all_texts = target_texts + contrast_texts
+    labels = [1] * len(target_texts) + [0] * len(contrast_texts)
+
+    vectorizer = TfidfVectorizer(
+        ngram_range=(2, 3),
+        max_features=5000,
+        min_df=max(2, len(target_texts) // 50),
+        max_df=0.8,
+        stop_words="english",
+        sublinear_tf=True,
+    )
+
+    try:
+        tfidf_matrix = vectorizer.fit_transform(all_texts)
+    except ValueError:
+        return []
+
+    feature_names = vectorizer.get_feature_names_out()
+
+    # Average TF-IDF score for target vs contrast groups
+    target_mask = np.array(labels) == 1
+    contrast_mask = ~target_mask
+
+    target_mean = np.asarray(tfidf_matrix[target_mask].mean(axis=0)).flatten()
+    if contrast_mask.any():
+        contrast_mean = np.asarray(tfidf_matrix[contrast_mask].mean(axis=0)).flatten()
+    else:
+        contrast_mean = np.zeros_like(target_mean)
+
+    # Distinctiveness = target score - contrast score
+    # Phrases that appear a lot in target but not in contrast rank highest
+    distinctiveness = target_mean - contrast_mean
+
+    # Also need raw count in target for the "count" field
+    target_doc_freq = np.asarray((tfidf_matrix[target_mask] > 0).sum(axis=0)).flatten()
+
+    # Rank by distinctiveness
+    top_indices = distinctiveness.argsort()[::-1]
+
+    results = []
+    used_words = set()  # track word overlap to avoid near-duplicate phrases
+
+    for idx in top_indices:
+        if len(results) >= n:
+            break
+
+        phrase = feature_names[idx]
+        count = int(target_doc_freq[idx])
+
+        # Skip generic phrases
+        if phrase in STOP_PHRASES:
+            continue
+        # Skip if barely mentioned
+        if count < 2:
+            continue
+
+        words_list = phrase.split()
+        words = set(words_list)
+
+        # Skip phrases with duplicate words (e.g., "good good")
+        if len(words) < len(words_list):
+            continue
+
+        # Skip if mostly filler words
+        meaningful = words - FILLER_WORDS
+        if len(meaningful) < max(1, len(words) - 1):
+            continue
+
+        # Skip phrases containing very short tokens (contraction artifacts like "ve", "ll", "re")
+        if any(len(w) < 3 for w in words_list):
+            continue
+
+        # Skip if too much overlap with already-selected phrases
+        # (this prevents "comfortable wear", "wear long", "comfortable wear long" all appearing)
+        overlap = words & used_words
+        if len(overlap) > 0 and len(overlap) >= len(words) - 1:
+            continue
+
+        used_words.update(words)
+        results.append({
+            "text": phrase,
+            "count": count,
+        })
+
+    return results
 
 
 def extract_key_insights(positive_df, negative_df, n=8) -> dict:
-    """Extract meaningful praise and complaint phrases from reviews."""
-    pos_texts = positive_df["review_text"].tolist()
-    neg_texts = negative_df["review_text"].tolist()
+    """Extract meaningful praise and complaint phrases from reviews using TF-IDF.
 
-    praise_counts = _count_pattern_matches(pos_texts, PRAISE_PATTERNS)
-    complaint_counts = _count_pattern_matches(neg_texts, COMPLAINT_PATTERNS)
+    Uses sentiment_score to filter more strictly:
+    - Praises come from clearly positive reviews (score > 0.3)
+    - Complaints come from clearly negative reviews (score < -0.3)
+    This avoids neutral reviews bleeding into either group.
+    """
+    if "sentiment_score" in positive_df.columns:
+        pos_texts = positive_df[positive_df["sentiment_score"] > 0.3]["review_text"].tolist()
+    else:
+        pos_texts = positive_df["review_text"].tolist()
+    if "sentiment_score" in negative_df.columns:
+        neg_texts = negative_df[negative_df["sentiment_score"] < -0.3]["review_text"].tolist()
+    else:
+        neg_texts = negative_df["review_text"].tolist()
 
-    praises = [
-        {"text": label, "count": count, "sentiment": "positive"}
-        for label, count in praise_counts.most_common(n)
-        if count >= 2
-    ]
-    complaints = [
-        {"text": label, "count": count, "sentiment": "negative"}
-        for label, count in complaint_counts.most_common(n)
-        if count >= 2
-    ]
+    praises = _extract_distinctive_phrases(pos_texts, neg_texts, n=n)
+    for p in praises:
+        p["sentiment"] = "positive"
+
+    complaints = _extract_distinctive_phrases(neg_texts, pos_texts, n=n)
+    for c in complaints:
+        c["sentiment"] = "negative"
 
     return {"praises": praises, "complaints": complaints}
