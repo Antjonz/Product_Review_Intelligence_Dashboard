@@ -2,23 +2,26 @@
 
 A fullstack web application that analyzes product review datasets using machine learning, providing sentiment analysis, topic extraction, fake review detection, and predictive analytics through an interactive dashboard.
 
+This is a demo learning project using the skills I've learned from my Data science/Machine learning, and Full-stack development courses.
+
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3-orange)
 
+![Demo](Screenshots/Product%20Review%20Intelligence%20Dashboard.gif.gif)
+
 ## Features
 
-- **Sentiment Analysis** — VADER-based sentiment scoring with positive/negative/neutral classification, timeline trends, and sentiment breakdown visualization
-- **Topic Extraction** — LDA topic modeling with interactive topic bubbles to discover key themes in positive and negative reviews
-- **Fake Review Detection** — Heuristic anomaly detection identifying suspicious reviews based on length, sentiment-rating mismatch, repetition, and extreme polarity
-- **Rating Prediction** — Ridge regression model predicts star ratings from review text with confidence scores (interactive predictor widget)
-- **AI Overview** — Automatic product detection with category identification, key terms extraction, and natural language summary of what customers like and dislike
-- **Key Insights** — Advanced TF-IDF analysis on bigrams/trigrams to extract distinctive praise and complaint phrases, mapped back to actual review sentences for human-readable insights
-- **Product Detection** — Intelligent extraction of product names, categories, and frequently mentioned terms from review text
-- **Interactive Dashboard** — Comprehensive visualizations including sentiment timelines, rating distributions, word clouds, topic bubbles, and filterable suspicious review tables
-- **Sample Data Support** — Browse and load pre-generated sample datasets without needing to upload files
-- **Dark Mode** — Full light/dark theme support with persistent user preference
+| Feature | Description | Preview |
+|---------|-------------|---------|
+| **File Upload & Sample Data** | Drag-and-drop CSV upload or browse pre-generated sample datasets. Automatic validation and preprocessing with support for multiple column name formats. | <img src="Screenshots/01%20homepage.png" width="300"> |
+| **AI Overview & Statistics** | Automatic product detection with category identification, key terms extraction, and natural language summary. Overview cards show total reviews, average rating, overall sentiment score, and fake review percentage. | <img src="Screenshots/02%20dashboard%20ai%20overview.png" width="300"><br><img src="Screenshots/02%20stats.png" width="300"> |
+| **Key Insights** | Advanced TF-IDF analysis extracts distinctive praise and complaint phrases from reviews, mapped back to actual sentences for human-readable insights. Highlights what customers specifically love and hate. | <img src="Screenshots/03%20general%20insights.png" width="300"> |
+| **Fake Review Detection** | Heuristic anomaly detection identifies suspicious reviews based on length anomalies, sentiment-rating mismatch, text repetition, and extreme polarity. Sortable and filterable table with fake scores and detection reasons. | <img src="Screenshots/04%20suspicious%20reviews.png" width="300"> |
+| **Sentiment Analysis** | VADER-based sentiment scoring with positive/negative/neutral classification. Interactive visualizations include sentiment breakdown pie chart, timeline trends over time, rating distribution bar chart, topic bubbles for theme discovery, and word clouds for frequent terms. | <img src="Screenshots/05%20sentiment%20analysis.png" width="300"> |
+| **Rating Predictor** | Interactive widget using Ridge regression to predict star ratings from custom review text. Enter any review and get instant rating prediction with confidence scores. Model trains automatically on your uploaded dataset. | <img src="Screenshots/06%20rating%20predictor.png" width="300"> |
+| **Dark Mode** | Full light/dark theme support with persistent user preference stored in localStorage. Toggle between themes with smooth transitions. | |
 
 ## Tech Stack
 
