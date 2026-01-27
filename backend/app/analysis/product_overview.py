@@ -137,21 +137,11 @@ def generate_overview_summary(df: pd.DataFrame, product_info: dict, insights: di
 
     likes_para = ""
     if praise_items:
-        likes_para = (
-            "Customers frequently praise: "
-            + ", ".join(praise_items[:3])
-            + (f", and {praise_items[3]}" if len(praise_items) > 3 else "")
-            + ". These are the most commonly mentioned positive aspects across all reviews."
-        )
+        likes_para = "Customers frequently praise: " + _join_list(praise_items[:5]) + "."
 
     dislikes_para = ""
     if complaint_items:
-        dislikes_para = (
-            "Common complaints include: "
-            + ", ".join(complaint_items[:3])
-            + (f", and {complaint_items[3]}" if len(complaint_items) > 3 else "")
-            + ". These issues appear most frequently in negative reviews."
-        )
+        dislikes_para = "Common complaints include: " + _join_list(complaint_items[:5]) + "."
 
     # Recommendation
     if avg_rating >= 4.0:
@@ -192,3 +182,11 @@ def _describe_products(product_info: dict) -> str:
         parts.append("products related to " + ", ".join(key_terms[:3]))
 
     return " — specifically ".join(parts) if parts else ""
+
+
+def _join_list(items: list[str]) -> str:
+    if len(items) == 0:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    return ", ".join(items[:-1]) + ", and " + items[-1]

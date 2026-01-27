@@ -114,21 +114,8 @@ async def analyze(file_id: str):
     positive_df = df[df["sentiment"] == "positive"]
     negative_df = df[df["sentiment"] == "negative"]
 
-    def top_phrases(subset, label, n=8):
-        from collections import Counter
-        from .utils.data_processing import tokenize
-        tokens = []
-        for t in subset["review_text"]:
-            tokens.extend(tokenize(t))
-        return [
-            {"text": w, "count": c, "sentiment": label}
-            for w, c in Counter(tokens).most_common(n)
-        ]
-
-    key_insights = {
-        "complaints": top_phrases(negative_df, "negative"),
-        "praises": top_phrases(positive_df, "positive"),
-    }
+    from .analysis.insights import extract_key_insights
+    key_insights = extract_key_insights(positive_df, negative_df)
 
     suspicious = get_suspicious_reviews(df)
 
