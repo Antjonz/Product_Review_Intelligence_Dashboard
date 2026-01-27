@@ -1,13 +1,27 @@
 import os
+import json
 import uuid
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .models import (
-    UploadResponse, AnalysisResponse, PredictRequest, PredictResponse,
+    UploadResponse, PredictRequest, PredictResponse,
     SampleDatasetInfo,
 )
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 from .utils.data_processing import preprocess_dataframe
 from .analysis.sentiment import analyze_sentiments, build_sentiment_timeline, get_sentiment_breakdown
 from .analysis.topics import extract_topics_by_sentiment, get_word_frequencies_by_sentiment
@@ -62,7 +76,7 @@ async def upload_file(file: UploadFile = File(...)):
     )
 
 
-@app.post("/api/analyze", response_model=AnalysisResponse)
+@app.post("/api/analyze")
 async def analyze(file_id: str):
     if file_id not in _uploads:
         raise HTTPException(404, "File not found. Please upload again.")
@@ -83,10 +97,10 @@ async def analyze(file_id: str):
     fake_count = (df["fake_score"] >= 0.3).sum()
 
     overview = {
-        "total_reviews": total,
-        "avg_rating": round(df["rating"].mean(), 2),
-        "sentiment_score": round(df["sentiment_score"].mean(), 3),
-        "fake_review_percentage": round(fake_count / total * 100, 1) if total else 0,
+        "total_reviews": int(total),
+        "avg_rating": round(float(df["rating"].mean()), 2),
+        "sentiment_score": round(float(df["sentiment_score"].mean()), 3),
+        "fake_review_percentage": round(float(fake_count) / total * 100, 1) if total else 0.0,
     }
 
     rating_dist = df["rating"].value_counts().sort_index().to_dict()
@@ -129,17 +143,20 @@ async def analyze(file_id: str):
     sentiment_breakdown = get_sentiment_breakdown(df)
     timeline = build_sentiment_timeline(df)
 
-    return AnalysisResponse(
-        overview=overview,
-        sentiment_timeline=timeline,
-        rating_distribution=rating_distribution,
-        topics=topics,
-        word_frequencies=word_frequencies,
-        key_insights=key_insights,
-        suspicious_reviews=suspicious,
-        sample_reviews=sample_reviews,
-        sentiment_breakdown=sentiment_breakdown,
-    )
+    result = {
+        "overview": overview,
+        "sentiment_timeline": timeline,
+        "rating_distribution": rating_distribution,
+        "topics": topics,
+        "word_frequencies": word_frequencies,
+        "key_insights": key_insights,
+        "suspicious_reviews": suspicious,
+        "sample_reviews": sample_reviews,
+        "sentiment_breakdown": sentiment_breakdown,
+    }
+    # Use NumpyEncoder to handle numpy int64/float64 types
+    content = json.loads(json.dumps(result, cls=NumpyEncoder))
+    return JSONResponse(content=content)
 
 
 @app.post("/api/predict", response_model=PredictResponse)
