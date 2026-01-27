@@ -27,6 +27,7 @@ from .analysis.sentiment import analyze_sentiments, build_sentiment_timeline, ge
 from .analysis.topics import extract_topics_by_sentiment, get_word_frequencies_by_sentiment
 from .analysis.fake_detection import detect_fake_reviews, get_suspicious_reviews
 from .analysis.predictions import predictor
+from .analysis.product_overview import detect_products, generate_overview_summary
 
 app = FastAPI(title="Product Review Intelligence API", version="1.0.0")
 
@@ -143,6 +144,10 @@ async def analyze(file_id: str):
     sentiment_breakdown = get_sentiment_breakdown(df)
     timeline = build_sentiment_timeline(df)
 
+    # Product detection and AI overview
+    product_info = detect_products(df)
+    ai_overview = generate_overview_summary(df, product_info, key_insights)
+
     result = {
         "overview": overview,
         "sentiment_timeline": timeline,
@@ -153,6 +158,8 @@ async def analyze(file_id: str):
         "suspicious_reviews": suspicious,
         "sample_reviews": sample_reviews,
         "sentiment_breakdown": sentiment_breakdown,
+        "product_info": product_info,
+        "ai_overview": ai_overview,
     }
     # Use NumpyEncoder to handle numpy int64/float64 types
     content = json.loads(json.dumps(result, cls=NumpyEncoder))

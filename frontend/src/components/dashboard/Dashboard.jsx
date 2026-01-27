@@ -8,6 +8,7 @@ import KeyInsights from './KeyInsights'
 import SuspiciousReviews from './SuspiciousReviews'
 import SentimentBreakdown from './SentimentBreakdown'
 import ReviewPredictor from './ReviewPredictor'
+import AIOverview from './AIOverview'
 
 const TABS = [
   { id: 'insights', label: 'Key Insights' },
@@ -21,6 +22,9 @@ export default function Dashboard({ data }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* AI Overview */}
+      <AIOverview aiOverview={data.ai_overview} productInfo={data.product_info} />
+
       {/* Overview */}
       <OverviewCards overview={data.overview} />
 
