@@ -1,0 +1,187 @@
+import os
+import uuid
+import pandas as pd
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from .models import (
+    UploadResponse, AnalysisResponse, PredictRequest, PredictResponse,
+    SampleDatasetInfo,
+)
+from .utils.data_processing import preprocess_dataframe
+from .analysis.sentiment import analyze_sentiments, build_sentiment_timeline, get_sentiment_breakdown
+from .analysis.topics import extract_topics_by_sentiment, get_word_frequencies_by_sentiment
+from .analysis.fake_detection import detect_fake_reviews, get_suspicious_reviews
+from .analysis.predictions import predictor
+
+app = FastAPI(title="Product Review Intelligence API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# In-memory storage for uploaded dataframes
+_uploads: dict[str, pd.DataFrame] = {}
+
+SAMPLE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_data")
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/api/upload", response_model=UploadResponse)
+async def upload_file(file: UploadFile = File(...)):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(400, "Only CSV files are supported")
+
+    try:
+        df = pd.read_csv(file.file)
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse CSV: {e}")
+
+    try:
+        df = preprocess_dataframe(df)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    file_id = str(uuid.uuid4())
+    _uploads[file_id] = df
+
+    return UploadResponse(
+        file_id=file_id,
+        filename=file.filename,
+        total_rows=len(df),
+        columns=list(df.columns),
+        message="File uploaded and validated successfully",
+    )
+
+
+@app.post("/api/analyze", response_model=AnalysisResponse)
+async def analyze(file_id: str):
+    if file_id not in _uploads:
+        raise HTTPException(404, "File not found. Please upload again.")
+
+    df = _uploads[file_id]
+
+    # Sentiment analysis
+    df = analyze_sentiments(df)
+
+    # Fake detection
+    df = detect_fake_reviews(df)
+
+    # Train predictor on this dataset
+    predictor.fit(df["review_text"].tolist(), df["rating"].tolist())
+
+    # Build response
+    total = len(df)
+    fake_count = (df["fake_score"] >= 0.3).sum()
+
+    overview = {
+        "total_reviews": total,
+        "avg_rating": round(df["rating"].mean(), 2),
+        "sentiment_score": round(df["sentiment_score"].mean(), 3),
+        "fake_review_percentage": round(fake_count / total * 100, 1) if total else 0,
+    }
+
+    rating_dist = df["rating"].value_counts().sort_index().to_dict()
+    rating_distribution = {str(k): int(v) for k, v in rating_dist.items()}
+
+    topics = extract_topics_by_sentiment(df)
+    word_frequencies = get_word_frequencies_by_sentiment(df)
+
+    # Key insights: top complaint and praise phrases
+    positive_df = df[df["sentiment"] == "positive"]
+    negative_df = df[df["sentiment"] == "negative"]
+
+    def top_phrases(subset, label, n=8):
+        from collections import Counter
+        from .utils.data_processing import tokenize
+        tokens = []
+        for t in subset["review_text"]:
+            tokens.extend(tokenize(t))
+        return [
+            {"text": w, "count": c, "sentiment": label}
+            for w, c in Counter(tokens).most_common(n)
+        ]
+
+    key_insights = {
+        "complaints": top_phrases(negative_df, "negative"),
+        "praises": top_phrases(positive_df, "positive"),
+    }
+
+    suspicious = get_suspicious_reviews(df)
+
+    sample_reviews = []
+    for _, row in df.sample(min(20, len(df)), random_state=42).iterrows():
+        sample_reviews.append({
+            "text": row["review_text"][:500],
+            "rating": int(row["rating"]),
+            "sentiment": row["sentiment"],
+            "sentiment_score": round(float(row["sentiment_score"]), 3),
+        })
+
+    sentiment_breakdown = get_sentiment_breakdown(df)
+    timeline = build_sentiment_timeline(df)
+
+    return AnalysisResponse(
+        overview=overview,
+        sentiment_timeline=timeline,
+        rating_distribution=rating_distribution,
+        topics=topics,
+        word_frequencies=word_frequencies,
+        key_insights=key_insights,
+        suspicious_reviews=suspicious,
+        sample_reviews=sample_reviews,
+        sentiment_breakdown=sentiment_breakdown,
+    )
+
+
+@app.post("/api/predict", response_model=PredictResponse)
+async def predict_rating(req: PredictRequest):
+    result = predictor.predict(req.text)
+    return PredictResponse(**result)
+
+
+@app.get("/api/sample-data", response_model=list[SampleDatasetInfo])
+def list_sample_data():
+    datasets = []
+    if os.path.isdir(SAMPLE_DATA_DIR):
+        for fname in os.listdir(SAMPLE_DATA_DIR):
+            if fname.endswith(".csv"):
+                path = os.path.join(SAMPLE_DATA_DIR, fname)
+                try:
+                    row_count = sum(1 for _ in open(path, encoding="utf-8")) - 1
+                except Exception:
+                    row_count = 0
+                datasets.append(SampleDatasetInfo(
+                    id=fname,
+                    name=fname.replace("_", " ").replace(".csv", "").title(),
+                    description=f"Sample dataset with {row_count} reviews",
+                    review_count=row_count,
+                ))
+    return datasets
+
+
+@app.post("/api/load-sample/{dataset_id}")
+async def load_sample(dataset_id: str):
+    path = os.path.join(SAMPLE_DATA_DIR, dataset_id)
+    if not os.path.isfile(path):
+        raise HTTPException(404, "Sample dataset not found")
+
+    df = pd.read_csv(path)
+    df = preprocess_dataframe(df)
+    file_id = str(uuid.uuid4())
+    _uploads[file_id] = df
+
+    return {
+        "file_id": file_id,
+        "filename": dataset_id,
+        "total_rows": len(df),
+        "message": "Sample data loaded successfully",
+    }
