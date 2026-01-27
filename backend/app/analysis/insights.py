@@ -1,10 +1,11 @@
-"""Extract meaningful key insights using TF-IDF on bigrams/trigrams."""
+"""Extract meaningful key insights using TF-IDF on bigrams/trigrams,
+then map back to original review sentences for human-readable output."""
+import re
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from collections import Counter
 
 
-# Generic phrases to filter out — these score high in TF-IDF but aren't useful insights
+# Generic n-grams to skip
 STOP_PHRASES = {
     "the product", "this product", "this item", "the item",
     "bought this", "buy this", "bought it", "got this",
@@ -25,11 +26,50 @@ STOP_PHRASES = {
     "ve made", "ve bought", "ve seen", "ve used",
 }
 
-# Words that are too generic on their own to form a useful phrase
 FILLER_WORDS = {
     "honestly", "overall", "opinion", "think", "really", "pretty",
     "quite", "just", "also", "got", "lot", "bit", "way",
 }
+
+
+def _find_source_sentence(phrase_words: set[str], texts: list[str]) -> str | None:
+    """Find the best original sentence containing all words of an n-gram phrase.
+
+    Returns a clean, short sentence fragment from the actual review text.
+    """
+    best = None
+    best_len = 999
+
+    for text in texts:
+        # Split review into sentences
+        sentences = re.split(r"[.!?]+", text)
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if len(sentence) < 8:
+                continue
+            lower = sentence.lower()
+            # Check if all key words from the n-gram appear in this sentence
+            if all(w in lower for w in phrase_words):
+                # Prefer shorter sentences (more focused)
+                if len(sentence) < best_len:
+                    best = sentence
+                    best_len = len(sentence)
+                    if best_len < 60:
+                        # Short enough, stop searching
+                        break
+        if best and best_len < 60:
+            break
+
+    if best:
+        # Clean up: strip leading filler, capitalize
+        best = re.sub(r"^(?:honestly|overall|in my opinion|i think|i feel)\s*,?\s*", "", best, flags=re.IGNORECASE)
+        best = best.strip()
+        if best:
+            best = best[0].upper() + best[1:]
+            # Truncate if too long
+            if len(best) > 80:
+                best = best[:77].rsplit(" ", 1)[0] + "..."
+    return best
 
 
 def _extract_distinctive_phrases(
@@ -37,12 +77,8 @@ def _extract_distinctive_phrases(
     contrast_texts: list[str],
     n: int = 8,
 ) -> list[dict]:
-    """
-    Extract phrases distinctive to target_texts vs contrast_texts.
-
-    Uses TF-IDF on bigrams/trigrams. Scores each phrase by how much more
-    important it is in the target group compared to the contrast group.
-    """
+    """Extract phrases distinctive to target_texts vs contrast_texts using TF-IDF,
+    then map each phrase back to a readable source sentence."""
     if len(target_texts) < 5:
         return []
 
@@ -65,7 +101,6 @@ def _extract_distinctive_phrases(
 
     feature_names = vectorizer.get_feature_names_out()
 
-    # Average TF-IDF score for target vs contrast groups
     target_mask = np.array(labels) == 1
     contrast_mask = ~target_mask
 
@@ -75,72 +110,71 @@ def _extract_distinctive_phrases(
     else:
         contrast_mean = np.zeros_like(target_mean)
 
-    # Distinctiveness = target score - contrast score
-    # Phrases that appear a lot in target but not in contrast rank highest
     distinctiveness = target_mean - contrast_mean
-
-    # Also need raw count in target for the "count" field
     target_doc_freq = np.asarray((tfidf_matrix[target_mask] > 0).sum(axis=0)).flatten()
 
-    # Rank by distinctiveness
     top_indices = distinctiveness.argsort()[::-1]
 
-    results = []
-    used_words = set()  # track word overlap to avoid near-duplicate phrases
+    # Phase 1: collect candidate n-gram phrases
+    candidates = []
+    used_words = set()
 
     for idx in top_indices:
-        if len(results) >= n:
+        if len(candidates) >= n * 3:  # collect more candidates, will filter later
             break
 
         phrase = feature_names[idx]
         count = int(target_doc_freq[idx])
 
-        # Skip generic phrases
-        if phrase in STOP_PHRASES:
-            continue
-        # Skip if barely mentioned
-        if count < 2:
+        if phrase in STOP_PHRASES or count < 2:
             continue
 
         words_list = phrase.split()
         words = set(words_list)
 
-        # Skip phrases with duplicate words (e.g., "good good")
         if len(words) < len(words_list):
             continue
-
-        # Skip if mostly filler words
         meaningful = words - FILLER_WORDS
         if len(meaningful) < max(1, len(words) - 1):
             continue
-
-        # Skip phrases containing very short tokens (contraction artifacts like "ve", "ll", "re")
         if any(len(w) < 3 for w in words_list):
             continue
 
-        # Skip if too much overlap with already-selected phrases
-        # (this prevents "comfortable wear", "wear long", "comfortable wear long" all appearing)
         overlap = words & used_words
         if len(overlap) > 0 and len(overlap) >= len(words) - 1:
             continue
 
         used_words.update(words)
+        candidates.append({"phrase_words": words, "count": count})
+
+    # Phase 2: map each candidate back to a readable source sentence
+    results = []
+    used_sentences = set()
+
+    for cand in candidates:
+        if len(results) >= n:
+            break
+
+        sentence = _find_source_sentence(cand["phrase_words"], target_texts)
+        if not sentence:
+            continue
+
+        # Deduplicate similar sentences
+        key = sentence.lower()[:40]
+        if key in used_sentences:
+            continue
+        used_sentences.add(key)
+
         results.append({
-            "text": phrase,
-            "count": count,
+            "text": sentence,
+            "count": cand["count"],
         })
 
     return results
 
 
 def extract_key_insights(positive_df, negative_df, n=8) -> dict:
-    """Extract meaningful praise and complaint phrases from reviews using TF-IDF.
-
-    Uses sentiment_score to filter more strictly:
-    - Praises come from clearly positive reviews (score > 0.3)
-    - Complaints come from clearly negative reviews (score < -0.3)
-    This avoids neutral reviews bleeding into either group.
-    """
+    """Extract human-readable praise and complaint phrases from reviews using TF-IDF."""
     if "sentiment_score" in positive_df.columns:
         pos_texts = positive_df[positive_df["sentiment_score"] > 0.3]["review_text"].tolist()
     else:
