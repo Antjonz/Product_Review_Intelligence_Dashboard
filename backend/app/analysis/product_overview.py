@@ -20,18 +20,18 @@ NON_PRODUCT_WORDS = STOP_WORDS | {
 
 # Known product category keywords
 PRODUCT_CATEGORIES = {
-    "headphones": ["headphone", "headphones", "earbuds", "earphone", "earbud", "ear"],
+    "headphones": ["headphone", "headphones", "earbuds", "earphone", "earbud"],
     "speaker": ["speaker", "speakers", "soundbar", "subwoofer", "bluetooth speaker"],
     "phone": ["phone", "smartphone", "iphone", "android", "samsung", "pixel", "mobile"],
     "laptop": ["laptop", "notebook", "macbook", "chromebook", "ultrabook"],
     "tablet": ["tablet", "ipad", "kindle", "e-reader"],
     "camera": ["camera", "dslr", "mirrorless", "webcam", "gopro", "lens"],
-    "tv": ["tv", "television", "monitor", "display", "screen", "oled", "led"],
+    "tv": ["tv", "television", "monitor", "oled", "4k tv", "smart tv"],
     "keyboard": ["keyboard", "mechanical keyboard", "keycap", "keyswitch"],
     "mouse": ["mouse", "trackpad", "touchpad", "gaming mouse"],
-    "charger": ["charger", "charging", "cable", "usb", "adapter", "power bank"],
-    "watch": ["watch", "smartwatch", "fitness tracker", "fitbit", "garmin"],
-    "router": ["router", "wifi", "modem", "mesh", "ethernet", "networking"],
+    "charger": ["charger", "power bank", "adapter"],
+    "watch": ["smartwatch", "fitness tracker", "fitbit", "garmin"],
+    "router": ["router", "modem", "mesh network"],
     "printer": ["printer", "scanner", "ink", "toner", "printing"],
     "console": ["console", "playstation", "xbox", "nintendo", "switch", "gaming"],
     "appliance": ["blender", "toaster", "microwave", "vacuum", "air fryer", "coffee maker"],
@@ -54,12 +54,15 @@ def detect_products(df: pd.DataFrame) -> list[dict]:
             })
 
     # 2. Match against known product categories
+    # Require a minimum number of mentions relative to total reviews
+    # to avoid false positives from incidental word usage
+    min_mentions = max(5, len(df) // 50)  # at least 5 mentions or 2% of reviews
     category_hits = {}
     for category, keywords in PRODUCT_CATEGORIES.items():
         count = 0
         for kw in keywords:
             count += len(re.findall(r"\b" + re.escape(kw) + r"\b", all_text))
-        if count > 0:
+        if count >= min_mentions:
             category_hits[category] = count
 
     detected_categories = sorted(category_hits.items(), key=lambda x: -x[1])[:5]
@@ -162,31 +165,33 @@ def generate_overview_summary(df: pd.DataFrame, product_info: dict, insights: di
 
 def _describe_products(product_info: dict) -> str:
     """Build a natural language description of what products the reviews cover."""
-    parts = []
-
     categories = product_info.get("detected_categories", [])
+    product_ids = product_info.get("product_ids", [])
+
     if categories:
         cat_names = [c["category"].lower() for c in categories[:3]]
         if len(cat_names) == 1:
-            parts.append(cat_names[0] + " products")
+            desc = cat_names[0] + " products"
+        elif len(cat_names) >= 3:
+            desc = "various consumer electronics and related products"
         else:
-            parts.append(", ".join(cat_names[:-1]) + " and " + cat_names[-1] + " products")
+            desc = cat_names[0] + " and " + cat_names[1] + " products"
 
-    product_ids = product_info.get("product_ids", [])
-    if product_ids and not categories:
+        if product_ids and len(product_ids) > 1:
+            desc += f" across {len(product_ids)} different products"
+        return desc
+
+    if product_ids:
         count = len(product_ids)
-        parts.append(f"{count} different product{'s' if count > 1 else ''}")
+        return f"{count} different product{'s' if count > 1 else ''}"
 
-    key_terms = product_info.get("key_terms", [])
-    if not parts and key_terms:
-        parts.append("products related to " + ", ".join(key_terms[:3]))
-
-    return " — specifically ".join(parts) if parts else ""
+    return ""
 
 
 def _join_list(items: list[str]) -> str:
     if len(items) == 0:
         return ""
-    if len(items) == 1:
-        return items[0]
-    return ", ".join(items[:-1]) + ", and " + items[-1]
+    quoted = [f'"{item}"' for item in items]
+    if len(quoted) == 1:
+        return quoted[0]
+    return ", ".join(quoted[:-1]) + ", and " + quoted[-1]

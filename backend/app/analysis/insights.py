@@ -24,11 +24,14 @@ STOP_PHRASES = {
     "features great", "great not", "not great", "product feels",
     "30 minutes", "minutes", "ve year", "purchase ve",
     "ve made", "ve bought", "ve seen", "ve used",
+    "highly recommend", "recommend highly", "mixed feelings",
+    "would buy again", "buy it again", "not sure about",
 }
 
 FILLER_WORDS = {
     "honestly", "overall", "opinion", "think", "really", "pretty",
     "quite", "just", "also", "got", "lot", "bit", "way",
+    "recommend", "highly", "mixed", "feelings", "sure",
 }
 
 
