@@ -2,7 +2,7 @@ import re
 import pandas as pd
 import numpy as np
 
-
+# Basic text cleaning function to normalize review text
 def clean_text(text: str) -> str:
     if not isinstance(text, str):
         return ""
@@ -13,7 +13,7 @@ def clean_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-
+# A basic set of English stop words. In a real application, consider using a more comprehensive list from a library like NLTK or spaCy.
 STOP_WORDS = {
     "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you",
     "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself",
@@ -36,12 +36,12 @@ STOP_WORDS = {
     "much", "even", "like", "well", "still", "back", "going", "went",
 }
 
-
+# Tokenization function that cleans text and removes stop words
 def tokenize(text: str) -> list[str]:
     words = clean_text(text).split()
     return [w for w in words if w not in STOP_WORDS and len(w) > 2]
 
-
+# Preprocessing function that validates and normalizes the DataFrame
 def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 

@@ -44,12 +44,12 @@ _uploads: dict[str, pd.DataFrame] = {}
 
 SAMPLE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_data")
 
-
+# Health check endpoint
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
-
+# File upload endpoint with validation and preprocessing
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
@@ -76,7 +76,7 @@ async def upload_file(file: UploadFile = File(...)):
         message="File uploaded and validated successfully",
     )
 
-
+# Analysis endpoint that performs all analyses and returns a comprehensive report
 @app.post("/api/analyze")
 async def analyze(file_id: str):
     if file_id not in _uploads:
@@ -153,12 +153,14 @@ async def analyze(file_id: str):
     return JSONResponse(content=content)
 
 
+# Prediction endpoint that uses the trained predictor to predict rating from review text
 @app.post("/api/predict", response_model=PredictResponse)
 async def predict_rating(req: PredictRequest):
     result = predictor.predict(req.text)
     return PredictResponse(**result)
 
 
+# Endpoint to list available sample datasets
 @app.get("/api/sample-data", response_model=list[SampleDatasetInfo])
 def list_sample_data():
     datasets = []
@@ -179,6 +181,7 @@ def list_sample_data():
     return datasets
 
 
+# Endpoint to load a sample dataset by ID and return its file_id for analysis
 @app.post("/api/load-sample/{dataset_id}")
 async def load_sample(dataset_id: str):
     path = os.path.join(SAMPLE_DATA_DIR, dataset_id)
