@@ -1,3 +1,8 @@
+/// TopicBubbles.jsx
+// This component displays the main topics extracted from the reviews, categorized into positive and negative topics. 
+// It uses a treemap visualization to show the relative size of each topic based on how many reviews mentioned it. 
+// Each bubble is colored differently and shows the topic name, and hovering over it reveals the top keywords associated with that topic.
+
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts'
 
 const POSITIVE_COLORS = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0']

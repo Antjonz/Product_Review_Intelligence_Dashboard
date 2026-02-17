@@ -1,3 +1,7 @@
+/// RatingDistribution.jsx
+// This component displays a bar chart of the rating distribution for the product. It shows how many reviews gave 1 star, 2 stars, etc. 
+// The bars are colored differently for each rating level to make it visually appealing and easy to interpret at a glance.
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#10b981']

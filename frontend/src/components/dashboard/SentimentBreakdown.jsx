@@ -1,3 +1,7 @@
+/// SentimentBreakdown.jsx
+// This component displays a breakdown of reviews by sentiment (positive, neutral, negative) along with a paginated list of example reviews for each sentiment category. 
+// It shows a colored bar representing the proportion of each sentiment and allows users to navigate through the reviews with pagination controls.
+
 import { useState } from 'react'
 import { sentimentColor, ratingStars } from '../../utils/formatters'
 

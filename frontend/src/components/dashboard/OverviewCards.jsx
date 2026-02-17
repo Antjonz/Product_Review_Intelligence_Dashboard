@@ -1,3 +1,7 @@
+/// OverviewCards.jsx
+// This component displays the key overview metrics in a card format. Each card shows a specific metric such as total reviews, average rating, sentiment score, and percentage of suspicious reviews. 
+// The cards are styled with icons and colors to make them visually distinct and easy to scan at a glance.
+
 import { MessageSquare, Star, TrendingUp, ShieldAlert } from 'lucide-react'
 import { formatNumber } from '../../utils/formatters'
 

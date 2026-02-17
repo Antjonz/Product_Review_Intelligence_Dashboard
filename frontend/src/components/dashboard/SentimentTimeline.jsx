@@ -1,3 +1,7 @@
+/// SentimentTimeline.jsx
+// This component displays a line chart showing the percentage of positive, negative, and neutral reviews over time. 
+// It uses the Recharts library to create a responsive line chart with a tooltip and legend for easy interpretation of the sentiment trends.
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 export default function SentimentTimeline({ data }) {

@@ -1,3 +1,7 @@
+/// SuspiciousReviews.jsx
+// This component displays a list of reviews that have been flagged as suspicious by the ML model. Each review shows the text (truncated if not expanded), the reasons why it was flagged, the predicted rating, and the fake score. 
+// Users can click on a review to expand and see the full text. If there are no suspicious reviews, it shows a placeholder message with an icon.
+
 import { useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { ratingStars, truncate } from '../../utils/formatters'

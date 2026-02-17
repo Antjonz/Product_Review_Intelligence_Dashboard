@@ -1,3 +1,7 @@
+/// KeyInsights.jsx
+// This component displays the key insights extracted from the reviews, categorized into what customers love and common complaints. 
+// Each insight is shown with a thumbs up or down icon and a count of how many reviews mentioned it. If there are no insights, it shows a placeholder message.
+
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 
 function InsightList({ items, icon: Icon, colorClass, badgeClass }) {

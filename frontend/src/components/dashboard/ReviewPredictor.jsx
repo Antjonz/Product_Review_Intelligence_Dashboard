@@ -1,3 +1,8 @@
+/// ReviewPredictor.jsx
+// This component allows users to type in a review and get an instant prediction of the rating, sentiment, and confidence score from the ML model. 
+// It uses a debounce mechanism to avoid making API calls on every keystroke and only triggers the prediction after the user has stopped typing for 500ms. 
+// The results are displayed in a visually appealing card format with colors indicating sentiment and a progress bar for confidence.
+
 import { useState, useEffect, useRef } from 'react'
 import { predictRating } from '../../services/api'
 import { ratingStars, sentimentColor } from '../../utils/formatters'

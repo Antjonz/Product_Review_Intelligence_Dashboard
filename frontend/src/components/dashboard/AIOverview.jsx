@@ -1,3 +1,6 @@
+/// AIOverview.jsx
+// This component displays the AI-generated overview of the product based on the reviews. It includes sections for product description, detected categories, 
+// overall summary, what people like and dislike, and a recommendation. It also shows key terms mentioned in the reviews.
 import { Sparkles, Package, ThumbsUp, ThumbsDown, MessageSquare, Tag } from 'lucide-react'
 
 export default function AIOverview({ aiOverview, productInfo }) {

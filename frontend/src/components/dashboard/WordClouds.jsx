@@ -1,3 +1,9 @@
+/// WordClouds.jsx
+// This component displays word clouds for the most frequently mentioned words in positive and negative reviews. 
+// It sizes the words based on their frequency and colors them differently for positive and negative sentiments. 
+// If there are no words to display, it shows a placeholder message.
+
+
 function WordCloud({ words, colorClass }) {
   if (!words || words.length === 0) return <p className="text-xs text-gray-400">No data</p>
 

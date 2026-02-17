@@ -1,3 +1,7 @@
+/// Dashboard.jsx
+// This is the main dashboard component that composes all the different sections and charts. It includes the AI overview at the top, followed by overview cards, 
+// sentiment timeline, rating distribution, topic bubbles, word clouds, and a tabbed section for key insights, suspicious reviews, sentiment breakdown, and review predictor.
+
 import { useState } from 'react'
 import OverviewCards from './OverviewCards'
 import SentimentTimeline from './SentimentTimeline'
