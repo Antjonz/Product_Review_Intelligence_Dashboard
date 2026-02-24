@@ -1,7 +1,2 @@
 # Auto detect text files and perform LF normalization
 * text=auto
-
-# Linguist overrides — exclude utility/data scripts from language stats
-backend/generate_sample_data.py linguist-vendored
-backend/app/analysis/topics.py linguist-vendored
-backend/app/analysis/predictions.py linguist-vendored
