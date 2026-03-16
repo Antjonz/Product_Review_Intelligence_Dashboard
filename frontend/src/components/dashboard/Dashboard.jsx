@@ -1,6 +1,10 @@
 /// Dashboard.jsx
 // This is the main dashboard component that composes all the different sections and charts. It includes the AI overview at the top, followed by overview cards, 
 // sentiment timeline, rating distribution, topic bubbles, word clouds, and a tabbed section for key insights, suspicious reviews, sentiment breakdown, and review predictor.
+// The component uses Tailwind CSS for styling and manages the active tab state for the deep dive section.
+// The component receives a `data` prop which contains all the necessary information to populate the different sections of the dashboard. 
+// It uses conditional rendering to display the AI overview only if it exists, 
+// and it organizes the layout using Tailwind's grid and flex utilities for a responsive design.
 
 import { useState } from 'react'
 import OverviewCards from './OverviewCards'

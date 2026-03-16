@@ -1,3 +1,9 @@
+# This script defines the main FastAPI application for the Product Review Intelligence API. 
+# It includes endpoints for uploading review datasets, performing comprehensive analysis, 
+# and making predictions based on review text. The application uses in-memory storage for uploaded datasets and provides 
+# a structured response with insights derived from the reviews. It also includes endpoints for listing and loading sample datasets. 
+# The code is organized to allow easy extension and integration of additional analysis features in the future.
+
 import os
 import json
 import uuid

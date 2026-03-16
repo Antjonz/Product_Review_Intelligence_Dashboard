@@ -1,3 +1,4 @@
+# This module defines the data models used in the Product Review Intelligence API.
 from pydantic import BaseModel, Field
 from typing import Optional
 
